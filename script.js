@@ -469,13 +469,15 @@ async function processMidtrans(total) {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
 
     try {
-        // Load snap.js kalau belum
+        // Load snap.js
         await loadMidtransSnap();
 
-        // Buat order ID unik
+        // Buat order ID
         var orderId = 'TX' + Date.now().toString(36).toUpperCase();
 
-        // Request snap token ke server
+        console.log('Requesting snap token, total:', total);
+
+        // Request ke server
         var response = await fetch('/api/midtrans', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -489,31 +491,42 @@ async function processMidtrans(total) {
         });
 
         var data = await response.json();
+        console.log('API response:', data);
 
-        if (!response.ok || data.error) {
+        if (!response.ok) {
             throw new Error(data.error || 'Gagal membuat token pembayaran');
         }
 
-        // Tutup modal pembayaran sebelum buka snap popup
+        if (!data.token) {
+            throw new Error('Token kosong dari server');
+        }
+
+        console.log('Snap token received:', data.token.substring(0, 20) + '...');
+
+        // Tutup modal pembayaran
         closePayment();
 
-        // Buka Snap popup
-        window.snap.pay(data.snap_token, {
+        // Buka popup Midtrans
+        window.snap.pay(data.token, {
             onSuccess: function (result) {
+                console.log('Payment success:', result);
                 finalizeTransaction('midtrans', total, orderId, result);
             },
             onPending: function (result) {
+                console.log('Payment pending:', result);
                 showToast('Menunggu pembayaran selesai', 'warning');
             },
             onError: function (result) {
-                showToast('Pembayaran gagal: ' + (result.message || ''), 'error');
+                console.log('Payment error:', result);
+                showToast('Pembayaran gagal', 'error');
             },
             onClose: function () {
-                // User nutup popup tanpa bayar, tidak apa-apa
+                console.log('Popup ditutup');
             }
         });
 
     } catch (err) {
+        console.error('processMidtrans error:', err);
         showToast(err.message, 'error');
     } finally {
         btn.disabled = false;

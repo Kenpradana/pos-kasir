@@ -473,12 +473,22 @@ async function processMidtrans(total) {
 
         var orderId = 'TX' + Date.now().toString(36).toUpperCase();
 
+        // Hitung rincian
+        var sub = getSubtotal();
+        var dp = Math.min(100, Math.max(0, parseFloat(document.getElementById('discountInput').value) || 0));
+        var disc = Math.round(sub * dp / 100);
+        var ad = sub - disc;
+        var tax = Math.round(ad * TAX_RATE);
+
         var response = await fetch('/api/midtrans', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 orderId: orderId,
                 amount: total,
+                subtotal: sub,
+                discount: disc,
+                tax: tax,
                 items: cart.map(function (i) {
                     return { id: i.id, name: i.name, price: i.price, qty: i.qty };
                 })
@@ -488,8 +498,7 @@ async function processMidtrans(total) {
         var data = await response.json();
 
         if (!response.ok) {
-            var errMsg = data.error || 'Gagal membuat token';
-            throw new Error(errMsg);
+            throw new Error(data.error || 'Gagal membuat token');
         }
 
         if (!data.token) {

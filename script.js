@@ -488,10 +488,7 @@ async function processMidtrans(total) {
         var data = await response.json();
 
         if (!response.ok) {
-            // Tampilkan error detail dari server
             var errMsg = data.error || 'Gagal membuat token';
-            if (data.keys_found) errMsg += ' (keys: ' + data.keys_found.join(', ') + ')';
-            if (data.raw_preview) errMsg += ' — ' + data.raw_preview;
             throw new Error(errMsg);
         }
 
@@ -501,7 +498,6 @@ async function processMidtrans(total) {
 
         closePayment();
 
-        // snap.pay bisa terima token snap atau redirect_url
         window.snap.pay(data.token, {
             onSuccess: function (result) {
                 finalizeTransaction('midtrans', total, orderId, result);
@@ -512,9 +508,7 @@ async function processMidtrans(total) {
             onError: function (result) {
                 showToast('Pembayaran gagal', 'error');
             },
-            onClose: function () {
-                // User tutup popup, tidak apa-apa
-            }
+            onClose: function () {}
         });
 
     } catch (err) {

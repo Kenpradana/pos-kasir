@@ -1,9 +1,8 @@
 export default async function handler(req, res) {
-    // Log untuk debugging
-    console.log('=== MIDTRANS API CALLED ===');
+    console.log('=== MIDTRANS API ===');
     console.log('Method:', req.method);
-    console.log('Has SERVER_KEY:', process.env.MIDTRANS_SERVER_KEY ? 'Ya' : 'TIDAK');
-    console.log('Body:', JSON.stringify(req.body));
+    console.log('Has Key:', process.env.MIDTRANS_SERVER_KEY ? 'Ya' : 'TIDAK');
+    console.log('Key awal:', process.env.MIDTRANS_SERVER_KEY ? process.env.MIDTRANS_SERVER_KEY.substring(0, 15) + '...' : 'kosong');
 
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -11,8 +10,7 @@ export default async function handler(req, res) {
 
     var SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
     if (!SERVER_KEY) {
-        console.error('SERVER KEY TIDAK ADA');
-        return res.status(500).json({ error: 'MIDTRANS_SERVER_KEY belum diisi di Vercel' });
+        return res.status(500).json({ error: 'MIDTRANS_SERVER_KEY belum diisi' });
     }
 
     var IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === 'true';
@@ -21,26 +19,21 @@ export default async function handler(req, res) {
         : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
 
     console.log('Mode:', IS_PRODUCTION ? 'PRODUCTION' : 'SANDBOX');
-    console.log('URL:', BASE_URL);
+    console.log('Base URL:', BASE_URL);
 
     var body = req.body;
     var orderId = body.orderId;
     var amount = parseInt(body.amount);
     var items = body.items || [];
 
-    console.log('Order ID:', orderId);
-    console.log('Amount:', amount);
-
     if (!orderId || !amount || amount <= 0) {
-        console.error('orderId atau amount tidak valid');
-        return res.status(400).json({ error: 'orderId dan amount wajib, amount harus > 0' });
+        return res.status(400).json({ error: 'orderId dan amount wajib' });
     }
 
-    // Encode server key ke base64
+    // Encode auth
     var authString = Buffer.from(SERVER_KEY + ':').toString('base64');
-    console.log('Auth encoded:', authString.substring(0, 10) + '...');
 
-    // Format item details
+    // Item details
     var itemDetails = items.map(function (item) {
         return {
             id: String(item.id),
@@ -50,14 +43,8 @@ export default async function handler(req, res) {
         };
     });
 
-    // Kalau item details kosong, buat dummy
     if (itemDetails.length === 0) {
-        itemDetails = [{
-            id: '1',
-            price: amount,
-            quantity: 1,
-            name: 'Pesanan KasirPOS'
-        }];
+        itemDetails = [{ id: '1', price: amount, quantity: 1, name: 'Pesanan' }];
     }
 
     var payload = {
@@ -73,7 +60,7 @@ export default async function handler(req, res) {
         }
     };
 
-    console.log('Payload:', JSON.stringify(payload));
+    console.log('Payload:', JSON.stringify(payload, null, 2));
 
     try {
         var response = await fetch(BASE_URL, {
@@ -86,33 +73,48 @@ export default async function handler(req, res) {
             body: JSON.stringify(payload)
         });
 
-        var text = await response.text();
-        console.log('Midtrans response status:', response.status);
-        console.log('Midtrans response body:', text);
+        var status = response.status;
+        var rawText = await response.text();
+
+        console.log('Midtrans HTTP Status:', status);
+        console.log('Midtrans Raw Response:', rawText);
 
         var data;
         try {
-            data = JSON.parse(text);
+            data = JSON.parse(rawText);
         } catch (e) {
-            console.error('Response bukan JSON:', text);
-            return res.status(500).json({ error: 'Response tidak valid dari Midtrans' });
+            console.error('Bukan JSON:', rawText);
+            return res.status(500).json({ error: 'Response bukan JSON', raw: rawText.substring(0, 200) });
         }
 
+        // Cek error
         if (data.error_message) {
-            console.error('Midtrans error:', data.error_message);
             return res.status(400).json({ error: data.error_message });
         }
-
-        if (!data.token) {
-            console.error('Token tidak ada di response');
-            return res.status(500).json({ error: 'Token tidak ditemukan di response Midtrans' });
+        if (data.validation_messages && data.validation_messages.length > 0) {
+            return res.status(400).json({ error: data.validation_messages.join(', ') });
+        }
+        if (data.status_code && data.status_code !== '200' && data.status_code !== 200) {
+            return res.status(400).json({ error: 'Midtrans error: ' + (data.status_message || 'Unknown') });
         }
 
-        console.log('TOKEN BERHASIL:', data.token.substring(0, 20) + '...');
-        res.status(200).json({ token: data.token });
+        // Ambil token - cek beberapa kemungkinan field
+        var token = data.token || data.snap_token || data.redirect_url || null;
+
+        if (!token) {
+            console.error('Tidak ada token. Full keys:', Object.keys(data));
+            return res.status(500).json({
+                error: 'Token tidak ada di response',
+                keys_found: Object.keys(data),
+                raw_preview: rawText.substring(0, 300)
+            });
+        }
+
+        console.log('SUKSES - Token:', String(token).substring(0, 30) + '...');
+        res.status(200).json({ token: token });
 
     } catch (error) {
-        console.error('CATCH ERROR:', error.message);
-        res.status(500).json({ error: 'Gagal menghubungi Midtrans: ' + error.message });
+        console.error('CATCH:', error.message);
+        res.status(500).json({ error: 'Gagal: ' + error.message });
     }
 }

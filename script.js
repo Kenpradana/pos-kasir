@@ -469,15 +469,10 @@ async function processMidtrans(total) {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
 
     try {
-        // Load snap.js
         await loadMidtransSnap();
 
-        // Buat order ID
         var orderId = 'TX' + Date.now().toString(36).toUpperCase();
 
-        console.log('Requesting snap token, total:', total);
-
-        // Request ke server
         var response = await fetch('/api/midtrans', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -491,42 +486,38 @@ async function processMidtrans(total) {
         });
 
         var data = await response.json();
-        console.log('API response:', data);
 
         if (!response.ok) {
-            throw new Error(data.error || 'Gagal membuat token pembayaran');
+            // Tampilkan error detail dari server
+            var errMsg = data.error || 'Gagal membuat token';
+            if (data.keys_found) errMsg += ' (keys: ' + data.keys_found.join(', ') + ')';
+            if (data.raw_preview) errMsg += ' — ' + data.raw_preview;
+            throw new Error(errMsg);
         }
 
         if (!data.token) {
-            throw new Error('Token kosong dari server');
+            throw new Error('Token kosong');
         }
 
-        console.log('Snap token received:', data.token.substring(0, 20) + '...');
-
-        // Tutup modal pembayaran
         closePayment();
 
-        // Buka popup Midtrans
+        // snap.pay bisa terima token snap atau redirect_url
         window.snap.pay(data.token, {
             onSuccess: function (result) {
-                console.log('Payment success:', result);
                 finalizeTransaction('midtrans', total, orderId, result);
             },
             onPending: function (result) {
-                console.log('Payment pending:', result);
-                showToast('Menunggu pembayaran selesai', 'warning');
+                showToast('Menunggu pembayaran', 'warning');
             },
             onError: function (result) {
-                console.log('Payment error:', result);
                 showToast('Pembayaran gagal', 'error');
             },
             onClose: function () {
-                console.log('Popup ditutup');
+                // User tutup popup, tidak apa-apa
             }
         });
 
     } catch (err) {
-        console.error('processMidtrans error:', err);
         showToast(err.message, 'error');
     } finally {
         btn.disabled = false;

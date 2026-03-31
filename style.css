@@ -266,6 +266,9 @@ body {
 .form-cat-custom-btn:hover { border-color: var(--fg-muted); color: var(--fg); }
 .form-cat-custom-btn.active { border-color: var(--accent); color: var(--accent); border-style: solid; }
 
+.pay-methods-4col { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 480px) { .pay-methods-4col { grid-template-columns: repeat(2, 1fr); } }
+
 @media print {
     body * { visibility: hidden; }
     .receipt, .receipt * { visibility: visible; }

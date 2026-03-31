@@ -5,14 +5,12 @@ var db = null;
 var supabaseReady = false;
 
 function initSupabase() {
-    // Coba ambil dari window dulu (buat development lokal)
     if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY &&
         window.SUPABASE_URL.indexOf('PROJECT_ID') === -1) {
         db = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-        supabaseReady = true;
+        midtransIsProduction = false;
         return Promise.resolve(true);
     }
-    // Kalau tidak ada, fetch dari API Vercel
     return fetch('/api/config')
         .then(function (res) {
             if (!res.ok) throw new Error('API error');
@@ -21,7 +19,7 @@ function initSupabase() {
         .then(function (data) {
             if (data.error) throw new Error(data.error);
             db = window.supabase.createClient(data.supabaseUrl, data.supabaseAnonKey);
-            supabaseReady = true;
+            midtransIsProduction = data.midtransIsProduction || false;
             return true;
         });
 }
@@ -85,6 +83,8 @@ var deleteTargetId = null;
 var selectedFormEmoji = '🍛';
 var selectedFormCategory = 'Makanan';
 var TAX_RATE = 0.11;
+var midtransIsProduction = false; // akan di-set dari API
+var midtransSnapLoaded = false;
 
 // ============================================================
 // UTILITAS
@@ -379,9 +379,12 @@ function openPayment() {
 }
 function closePayment() { document.getElementById('paymentModal').style.display = 'none'; }
 function selectPayMethod(m) {
-    selectedPayMethod = m; updatePayMethodUI();
-    document.getElementById('cashSection').style.display = m !== 'cash' ? 'none' : 'block';
-    if (m === 'cash') document.getElementById('cashInput').focus();
+    selectedPayMethod = m;
+    updatePayMethodUI();
+    // Tunai perlu input uang, lainnya tidak
+    var showCash = m === 'cash';
+    document.getElementById('cashSection').style.display = showCash ? 'block' : 'none';
+    if (showCash) document.getElementById('cashInput').focus();
 }
 function updatePayMethodUI() {
     document.querySelectorAll('.pay-method').forEach(function (el) { el.classList.toggle('selected', el.dataset.method === selectedPayMethod); });
@@ -416,6 +419,8 @@ function calcChange() {
 // ============================================================
 async function processPayment() {
     var total = getTotal();
+
+    // === TUNAI ===
     if (selectedPayMethod === 'cash') {
         var cash = parseInt(document.getElementById('cashInput').value) || 0;
         if (cash < total) {
@@ -425,8 +430,101 @@ async function processPayment() {
             setTimeout(function () { inp.classList.remove('animate-shake'); }, 400);
             return;
         }
+        await finalizeTransaction('cash', cash);
+        return;
     }
 
+    // === MIDTRANS ===
+    if (selectedPayMethod === 'midtrans') {
+        await processMidtrans(total);
+        return;
+    }
+
+    // === KARTU / E-WALLET (manual) ===
+    await finalizeTransaction(selectedPayMethod, total);
+}
+
+// ============================================================
+// MIDTRANS FLOW
+// ============================================================
+async function loadMidtransSnap() {
+    if (midtransSnapLoaded && window.snap) return true;
+
+    return new Promise(function (resolve, reject) {
+        var url = midtransIsProduction
+            ? 'https://app.midtrans.com/snap/snap.js'
+            : 'https://app.sandbox.midtrans.com/snap/snap.js';
+
+        var script = document.createElement('script');
+        script.src = url;
+        script.onload = function () { midtransSnapLoaded = true; resolve(true); };
+        script.onerror = function () { reject(new Error('Gagal memuat Midtrans Snap')); };
+        document.head.appendChild(script);
+    });
+}
+
+async function processMidtrans(total) {
+    var btn = document.getElementById('confirmPayBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+
+    try {
+        // Load snap.js kalau belum
+        await loadMidtransSnap();
+
+        // Buat order ID unik
+        var orderId = 'TX' + Date.now().toString(36).toUpperCase();
+
+        // Request snap token ke server
+        var response = await fetch('/api/midtrans', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                orderId: orderId,
+                amount: total,
+                items: cart.map(function (i) {
+                    return { id: i.id, name: i.name, price: i.price, qty: i.qty };
+                })
+            })
+        });
+
+        var data = await response.json();
+
+        if (!response.ok || data.error) {
+            throw new Error(data.error || 'Gagal membuat token pembayaran');
+        }
+
+        // Tutup modal pembayaran sebelum buka snap popup
+        closePayment();
+
+        // Buka Snap popup
+        window.snap.pay(data.snap_token, {
+            onSuccess: function (result) {
+                finalizeTransaction('midtrans', total, orderId, result);
+            },
+            onPending: function (result) {
+                showToast('Menunggu pembayaran selesai', 'warning');
+            },
+            onError: function (result) {
+                showToast('Pembayaran gagal: ' + (result.message || ''), 'error');
+            },
+            onClose: function () {
+                // User nutup popup tanpa bayar, tidak apa-apa
+            }
+        });
+
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Konfirmasi Pembayaran';
+    }
+}
+
+// ============================================================
+// FINALIZE TRANSACTION (Dipakai semua metode)
+// ============================================================
+async function finalizeTransaction(method, cashPaid, externalOrderId, midtransResult) {
     // Kurangi stok
     for (var i = 0; i < cart.length; i++) {
         var item = cart[i];
@@ -439,27 +537,41 @@ async function processPayment() {
 
     var sub = getSubtotal();
     var dp = Math.min(100, Math.max(0, parseFloat(document.getElementById('discountInput').value) || 0));
-    var disc = Math.round(sub * dp / 100), ad = sub - disc, tax = Math.round(ad * TAX_RATE);
-    var cashPaid = selectedPayMethod === 'cash' ? parseInt(document.getElementById('cashInput').value) : total;
+    var disc = Math.round(sub * dp / 100);
+    var ad = sub - disc;
+    var tax = Math.round(ad * TAX_RATE);
+    var total = ad + tax;
 
     var tx = {
-        id: 'TX' + Date.now().toString(36).toUpperCase(),
+        id: externalOrderId || ('TX' + Date.now().toString(36).toUpperCase()),
         date: new Date().toLocaleString('id-ID'),
-        items: cart.map(function (x) { return { id: x.id, name: x.name, price: x.price, qty: x.qty, emoji: x.emoji }; }),
-        subtotal: sub, discount: disc, tax: tax, total: total,
-        method: selectedPayMethod, cash: cashPaid, change: cashPaid - total, table: selectedTable
+        items: cart.map(function (x) {
+            return { id: x.id, name: x.name, price: x.price, qty: x.qty, emoji: x.emoji };
+        }),
+        subtotal: sub,
+        discount: disc,
+        tax: tax,
+        total: total,
+        method: method,
+        cash: cashPaid,
+        change: method === 'cash' ? (cashPaid - total) : 0,
+        table: selectedTable
     };
 
     await dbSaveTransaction(tx);
     transactions.unshift(tx);
 
-    currentTransaction = tx;
+    // Reset state
     closePayment();
     showReceipt(tx);
 
-    cart = []; selectedTable = null;
+    cart = [];
+    selectedTable = null;
     document.getElementById('discountInput').value = 0;
-    renderTables(); renderCart(); updateSummary(); filterProducts();
+    renderTables();
+    renderCart();
+    updateSummary();
+    filterProducts();
     document.getElementById('txCount').textContent = transactions.length;
 }
 
@@ -467,7 +579,7 @@ async function processPayment() {
 // STRUK
 // ============================================================
 function showReceipt(tx) {
-    var ml = { cash: 'Tunai', card: 'Kartu Debit/Kredit', ewallet: 'E-Wallet' };
+    var ml = { cash: 'Tunai', card: 'Kartu Debit/Kredit', ewallet: 'E-Wallet', midtrans: 'Midtrans' };
     var ih = tx.items.map(function (i) { return '<div class="flex justify-between"><span>' + i.qty + 'x ' + i.name + '</span><span>' + formatRupiah(i.price * i.qty) + '</span></div>'; }).join('');
     var dr = tx.discount > 0 ? '<div class="flex justify-between" style="color:#cc0000;"><span>Diskon</span><span>- ' + formatRupiah(tx.discount) + '</span></div>' : '';
     var cr = tx.method === 'cash' ? '<div class="flex justify-between" style="font-weight:600;"><span>Kembalian</span><span>' + formatRupiah(tx.change) + '</span></div>' : '';
@@ -487,9 +599,9 @@ async function openHistory() {
     if (!transactions.length) {
         c.innerHTML = '<div class="empty-cart" style="padding:48px 0;"><i class="fa-solid fa-receipt"></i><p class="text-sm">Belum ada transaksi</p></div>';
     } else {
-        var ml = { cash: 'Tunai', card: 'Kartu', ewallet: 'E-Wallet' };
-        var mi = { cash: 'fa-money-bill-wave', card: 'fa-credit-card', ewallet: 'fa-mobile-screen-button' };
-        var mc = { cash: 'var(--accent)', card: 'var(--warning)', ewallet: '#a78bfa' };
+        var ml = { cash: 'Tunai', card: 'Kartu', ewallet: 'E-Wallet', midtrans: 'Midtrans' };
+        var mi = { cash: 'fa-money-bill-wave', card: 'fa-credit-card', ewallet: 'fa-mobile-screen-button', midtrans: 'fa-qrcode' };
+        var mc = { cash: 'var(--accent)', card: 'var(--warning)', ewallet: '#a78bfa', midtrans: '#4ade80' };
         c.innerHTML = '<div class="flex items-center justify-between mb-4"><p class="text-xs" style="color:var(--fg-muted);">' + transactions.length + ' transaksi</p><button onclick="clearHistory()" class="btn-danger-sm">Hapus Semua</button></div><div class="flex flex-col" style="max-height:60vh;overflow-y:auto;">' + transactions.map(function (tx) {
             return '<div class="history-item"><div class="history-item-header"><div class="flex items-center gap-2"><span class="history-item-id">' + tx.tx_id + '</span><span class="history-item-tag">Meja ' + (tx.table_num || '-') + '</span></div><div class="flex items-center gap-1.5"><i class="fa-solid ' + mi[tx.method] + '" style="color:' + mc[tx.method] + ';font-size:0.7rem;"></i><span class="text-xs" style="color:var(--fg-muted);">' + ml[tx.method] + '</span></div></div><div class="history-item-tags">' + (tx.items || []).map(function (i) { return '<span class="history-item-tag">' + i.emoji + ' ' + i.qty + 'x</span>'; }).join('') + '</div><div class="history-item-footer"><span class="text-xs" style="color:var(--fg-muted);">' + tx.date + '</span><span class="font-mono text-sm font-bold" style="color:var(--accent);">' + formatRupiah(tx.total) + '</span></div></div>';
         }).join('') + '</div>';

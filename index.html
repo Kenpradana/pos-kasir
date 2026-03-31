@@ -183,11 +183,25 @@
                 <p class="font-mono pay-total-amount" id="payTotalDisplay">Rp 0</p>
             </div>
             <p class="text-xs font-semibold mb-3" style="color: var(--fg-muted);">Pilih Metode</p>
-            <div class="pay-methods-grid" id="payMethods">
-                <div class="pay-method selected" data-method="cash" onclick="selectPayMethod('cash')"><i class="fa-solid fa-money-bill-wave" style="color: var(--accent);"></i><p class="text-xs font-semibold mt-1">Tunai</p></div>
-                <div class="pay-method" data-method="card" onclick="selectPayMethod('card')"><i class="fa-solid fa-credit-card" style="color: var(--warning);"></i><p class="text-xs font-semibold mt-1">Kartu</p></div>
-                <div class="pay-method" data-method="ewallet" onclick="selectPayMethod('ewallet')"><i class="fa-solid fa-mobile-screen-button" style="color: #a78bfa;"></i><p class="text-xs font-semibold mt-1">E-Wallet</p></div>
+            <div class="pay-methods-grid pay-methods-4col" id="payMethods">
+            <div class="pay-method selected" data-method="cash" onclick="selectPayMethod('cash')">
+                <i class="fa-solid fa-money-bill-wave" style="color: var(--accent);"></i>
+                <p class="text-xs font-semibold mt-1">Tunai</p>
             </div>
+            <div class="pay-method" data-method="midtrans" onclick="selectPayMethod('midtrans')">
+                <i class="fa-solid fa-qrcode" style="color: #4ade80;"></i>
+                <p class="text-xs font-semibold mt-1">Midtrans</p>
+                <p class="text-xs mt-0.5" style="color: var(--fg-muted); font-size: 0.6rem;">QRIS/GoPay/VA</p>
+            </div>
+            <div class="pay-method" data-method="card" onclick="selectPayMethod('card')">
+                <i class="fa-solid fa-credit-card" style="color: var(--warning);"></i>
+                <p class="text-xs font-semibold mt-1">Kartu</p>
+            </div>
+            <div class="pay-method" data-method="ewallet" onclick="selectPayMethod('ewallet')">
+                <i class="fa-solid fa-mobile-screen-button" style="color: #a78bfa;"></i>
+                <p class="text-xs font-semibold mt-1">E-Wallet</p>
+            </div>
+        </div>
             <div id="cashSection">
                 <p class="text-xs font-semibold mb-3" style="color: var(--fg-muted);">Uang Diterima</p>
                 <input type="number" id="cashInput" class="input-field font-mono input-cash" placeholder="Masukkan jumlah..." oninput="calcChange()">

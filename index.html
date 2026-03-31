@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KasirPOS — Sistem Kasir Modern</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-pattern">
+
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="screen-overlay">
+        <div class="screen-center">
+            <div class="loading-spinner"></div>
+            <p class="text-sm mt-4" style="color: var(--fg-muted);">Menghubungkan ke server...</p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen-overlay" style="display: none;">
+        <div class="login-card animate-pop">
+            <div class="text-center mb-6">
+                <div class="login-logo">
+                    <i class="fa-solid fa-cash-register"></i>
+                </div>
+                <h1 class="text-xl font-bold mt-4">KasirPOS</h1>
+                <p class="text-xs mt-1" style="color: var(--fg-muted);">Masuk untuk melanjutkan</p>
+            </div>
+
+            <div id="loginError" class="login-error" style="display: none;"></div>
+
+            <div class="mb-4">
+                <label class="crud-label">Email</label>
+                <input type="email" id="loginEmail" class="input-field" placeholder="kasir@toko.com">
+            </div>
+            <div class="mb-5">
+                <label class="crud-label">Password</label>
+                <input type="password" id="loginPassword" class="input-field" placeholder="Masukkan password">
+            </div>
+
+            <button onclick="handleLogin()" class="btn-accent btn-pay mb-3" id="loginBtn">
+                <i class="fa-solid fa-right-to-bracket"></i> Masuk
+            </button>
+
+            <p class="text-center text-xs" style="color: var(--fg-muted);">
+                Hubungkan Supabase di <code class="font-mono" style="color: var(--accent);">config.js</code>
+            </p>
+        </div>
+    </div>
+
+    <!-- Config Error Screen -->
+    <div id="configErrorScreen" class="screen-overlay" style="display: none;">
+        <div class="login-card animate-pop">
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: var(--warning-glow);">
+                    <i class="fa-solid fa-gear text-2xl" style="color: var(--warning);"></i>
+                </div>
+                <h2 class="text-lg font-bold">Setup Diperlukan</h2>
+                <p class="text-sm mt-2" style="color: var(--fg-muted);">Buka file <code class="font-mono" style="color: var(--accent);">config.js</code> dan isi SUPABASE_URL serta SUPABASE_ANON_KEY</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- App (tersembunyi sampai login) -->
+    <div id="appContainer" style="display: none; height: 100vh; display: none; flex-direction: column;">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="flex items-center gap-3">
+                <div class="header-logo">
+                    <i class="fa-solid fa-cash-register"></i>
+                </div>
+                <div>
+                    <h1 class="header-title">KasirPOS</h1>
+                    <p class="header-subtitle">Sistem Kasir Modern</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="openProductManager()" class="btn-outline flex items-center gap-2" style="padding: 8px 14px;">
+                    <i class="fa-solid fa-boxes-stacked" style="font-size: 0.8rem;"></i>
+                    <span class="text-xs">Kelola Produk</span>
+                </button>
+                <div class="header-info-box">
+                    <i class="fa-regular fa-calendar"></i>
+                    <span id="currentDate" class="font-mono"></span>
+                </div>
+                <div class="header-info-box">
+                    <i class="fa-regular fa-clock" style="color: var(--accent);"></i>
+                    <span id="currentTime" class="font-mono" style="color: var(--accent);"></span>
+                </div>
+                <button onclick="openHistory()" class="btn-outline flex items-center gap-2" style="padding: 8px 14px;">
+                    <i class="fa-solid fa-clock-rotate-left" style="font-size: 0.8rem;"></i>
+                    <span class="text-xs">Riwayat</span>
+                    <span id="txCount" class="font-mono text-xs px-2 py-0.5 rounded-md badge-count">0</span>
+                </button>
+                <button onclick="handleLogout()" class="btn-outline flex items-center gap-2" style="padding: 8px 14px; border-color: rgba(255,92,106,0.3); color: var(--danger);" title="Keluar">
+                    <i class="fa-solid fa-right-from-bracket" style="font-size: 0.8rem;"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Konten Utama -->
+        <main class="main-layout">
+            <section class="panel-left">
+                <div class="filter-section">
+                    <div class="flex gap-3 items-center">
+                        <div class="relative flex-1">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="searchInput" placeholder="Cari produk..." class="input-field" style="padding-left: 36px;" oninput="filterProducts()">
+                        </div>
+                        <div class="store-badge">
+                            <i class="fa-solid fa-store"></i>
+                            <span class="text-xs font-medium">Toko Utama</span>
+                        </div>
+                    </div>
+                    <div class="category-tabs" id="categoryTabs"></div>
+                </div>
+                <div class="product-scroll" id="productGrid">
+                    <div class="product-grid" id="productsContainer"></div>
+                </div>
+            </section>
+
+            <section class="panel-right">
+                <div class="order-header">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-receipt" style="color: var(--accent);"></i> Order Baru
+                        </h2>
+                        <button onclick="clearCart()" class="btn-danger-sm">
+                            <i class="fa-solid fa-trash-can mr-1"></i> Hapus Semua
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs" style="color: var(--fg-muted);">Meja:</span>
+                        <div class="flex gap-1.5 flex-wrap" id="tableSelector"></div>
+                    </div>
+                </div>
+                <div class="cart-scroll" id="cartContainer">
+                    <div id="emptyCart" class="empty-cart">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <p class="text-sm">Keranjang kosong</p>
+                        <p class="text-xs">Klik produk untuk menambahkan</p>
+                    </div>
+                    <div id="cartItems" class="cart-items-list"></div>
+                </div>
+                <div class="summary-section">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-tag" style="color: var(--warning); font-size: 0.78rem;"></i>
+                        <input type="number" id="discountInput" placeholder="Diskon (%)" class="input-field font-mono input-discount" min="0" max="100" value="0" oninput="updateSummary()">
+                        <span class="text-xs" style="color: var(--fg-muted);">persen</span>
+                    </div>
+                    <div class="summary-rows">
+                        <div class="summary-row"><span>Subtotal</span><span class="font-mono" id="subtotalValue">Rp 0</span></div>
+                        <div class="summary-row"><span>Diskon</span><span class="font-mono discount-text" id="discountValue">- Rp 0</span></div>
+                        <div class="summary-row"><span>Pajak (11%)</span><span class="font-mono" id="taxValue">Rp 0</span></div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-total"><span class="text-sm font-semibold">Total</span><span class="font-mono total-price" id="totalValue">Rp 0</span></div>
+                    </div>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs" style="color: var(--fg-muted);"><span id="itemCount">0</span> item</span>
+                    </div>
+                    <button id="payBtn" class="btn-accent btn-pay" onclick="openPayment()" disabled>
+                        <i class="fa-solid fa-wallet"></i> Bayar Sekarang
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Pembayaran -->
+    <div id="paymentModal" class="modal-overlay" style="display: none;" onclick="if(event.target===this)closePayment()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-credit-card" style="color: var(--accent);"></i> Pembayaran</h3>
+                <button onclick="closePayment()" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="pay-total-box">
+                <p class="text-xs mb-1" style="color: var(--fg-muted);">Total yang harus dibayar</p>
+                <p class="font-mono pay-total-amount" id="payTotalDisplay">Rp 0</p>
+            </div>
+            <p class="text-xs font-semibold mb-3" style="color: var(--fg-muted);">Pilih Metode</p>
+            <div class="pay-methods-grid" id="payMethods">
+                <div class="pay-method selected" data-method="cash" onclick="selectPayMethod('cash')"><i class="fa-solid fa-money-bill-wave" style="color: var(--accent);"></i><p class="text-xs font-semibold mt-1">Tunai</p></div>
+                <div class="pay-method" data-method="card" onclick="selectPayMethod('card')"><i class="fa-solid fa-credit-card" style="color: var(--warning);"></i><p class="text-xs font-semibold mt-1">Kartu</p></div>
+                <div class="pay-method" data-method="ewallet" onclick="selectPayMethod('ewallet')"><i class="fa-solid fa-mobile-screen-button" style="color: #a78bfa;"></i><p class="text-xs font-semibold mt-1">E-Wallet</p></div>
+            </div>
+            <div id="cashSection">
+                <p class="text-xs font-semibold mb-3" style="color: var(--fg-muted);">Uang Diterima</p>
+                <input type="number" id="cashInput" class="input-field font-mono input-cash" placeholder="Masukkan jumlah..." oninput="calcChange()">
+                <div class="quick-cash-grid" id="quickCash"></div>
+                <div id="changeSection" class="change-box" style="display: none;"><div class="flex justify-between items-center"><span class="text-xs" style="color: var(--fg-muted);">Kembalian</span><span class="font-mono text-xl font-bold" style="color: var(--accent);" id="changeValue">Rp 0</span></div></div>
+                <div id="changeWarning" class="change-warning" style="display: none;"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Uang kurang!</div>
+            </div>
+            <button id="confirmPayBtn" class="btn-accent btn-pay" onclick="processPayment()"><i class="fa-solid fa-check-circle"></i> Konfirmasi Pembayaran</button>
+        </div>
+    </div>
+
+    <!-- Modal Struk -->
+    <div id="receiptModal" class="modal-overlay" style="display: none;" onclick="if(event.target===this)closeReceipt()">
+        <div class="modal-content modal-receipt" onclick="event.stopPropagation()">
+            <div class="modal-header"><h3 class="text-base font-bold">Transaksi Berhasil</h3><button onclick="closeReceipt()" class="modal-close"><i class="fa-solid fa-xmark"></i></button></div>
+            <div id="receiptContent"></div>
+            <div class="flex gap-3 mt-5">
+                <button onclick="printReceipt()" class="btn-outline flex-1 flex items-center justify-center gap-2"><i class="fa-solid fa-print"></i> Cetak</button>
+                <button onclick="closeReceipt()" class="btn-accent flex-1 flex items-center justify-center gap-2"><i class="fa-solid fa-check"></i> Selesai</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Riwayat -->
+    <div id="historyModal" class="modal-overlay" style="display: none;" onclick="if(event.target===this)closeHistory()">
+        <div class="modal-content modal-history" onclick="event.stopPropagation()">
+            <div class="modal-header"><h3 class="text-base font-bold flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left" style="color: var(--accent);"></i> Riwayat Transaksi</h3><button onclick="closeHistory()" class="modal-close"><i class="fa-solid fa-xmark"></i></button></div>
+            <div id="historyContent"></div>
+        </div>
+    </div>
+
+    <!-- Modal Kelola Produk -->
+    <div id="productModal" class="modal-overlay" style="display: none;" onclick="if(event.target===this)closeProductManager()">
+        <div class="modal-content modal-crud" onclick="event.stopPropagation()">
+            <div class="modal-header"><h3 class="text-base font-bold flex items-center gap-2"><i class="fa-solid fa-boxes-stacked" style="color: var(--accent);"></i> Kelola Produk</h3><button onclick="closeProductManager()" class="modal-close"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="crud-toolbar">
+                <div class="relative flex-1"><i class="fa-solid fa-magnifying-glass search-icon" style="font-size: 0.75rem;"></i><input type="text" id="crudSearch" placeholder="Cari produk..." class="input-field" style="padding-left: 32px; font-size: 0.82rem; padding-top: 8px; padding-bottom: 8px;" oninput="renderProductTable()"></div>
+                <select id="crudCatFilter" class="input-field crud-cat-select" onchange="renderProductTable()"><option value="Semua">Semua Kategori</option></select>
+                <button onclick="showProductForm()" class="btn-accent" style="padding: 8px 16px; font-size: 0.82rem; white-space: nowrap;"><i class="fa-solid fa-plus mr-1"></i> Tambah</button>
+            </div>
+            <div class="crud-table-wrap" id="crudTableWrap">
+                <table class="crud-table"><thead><tr><th style="width:50px;">Emoji</th><th>Nama Produk</th><th>Kategori</th><th>Harga</th><th>Stok</th><th style="width:100px;">Aksi</th></tr></thead><tbody id="crudTableBody"></tbody></table>
+                <div id="crudEmpty" class="empty-cart" style="display:none;padding:32px 0;"><i class="fa-solid fa-box-open"></i><p class="text-sm">Tidak ada produk ditemukan</p></div>
+            </div>
+            <div class="crud-info-bar">
+                <span id="crudProductCount" class="text-xs" style="color: var(--fg-muted);">0 produk</span>
+                <button onclick="resetDatabase()" class="text-xs px-3 py-1 rounded-lg" style="color: var(--danger); background: var(--danger-glow); border: 1px solid rgba(255,92,106,0.2); cursor: pointer; font-family: inherit;"><i class="fa-solid fa-rotate-left mr-1"></i> Reset ke Default</button>
+            </div>
+        </div>
+        <div id="productFormPanel" class="modal-content modal-form" style="display:none;" onclick="event.stopPropagation()">
+            <div class="modal-header"><h3 class="text-base font-bold" id="formTitle">Tambah Produk</h3><button onclick="hideProductForm()" class="modal-close"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="crud-form-body">
+                <div class="mb-4"><label class="crud-label">Emoji Produk</label><div class="flex items-center gap-3 mb-2"><div id="selectedEmoji" class="selected-emoji-display">🍛</div><span class="text-xs" style="color: var(--fg-muted);">Klik emoji di bawah</span></div><div class="emoji-grid" id="emojiGrid"></div></div>
+                <div class="mb-4"><label class="crud-label">Nama Produk</label><input type="text" id="formName" class="input-field" placeholder="Contoh: Nasi Goreng Spesial"></div>
+                <div class="mb-4"><label class="crud-label">Kategori</label><div class="flex gap-2 flex-wrap" id="formCatButtons"></div><input type="text" id="formCustomCat" class="input-field mt-2" placeholder="Atau tulis kategori baru..." style="display:none; font-size:0.85rem;"></div>
+                <div class="grid grid-cols-2 gap-4 mb-6"><div><label class="crud-label">Harga (Rp)</label><input type="number" id="formPrice" class="input-field font-mono" placeholder="25000" min="0"></div><div><label class="crud-label">Stok</label><input type="number" id="formStock" class="input-field font-mono" placeholder="50" min="0"></div></div>
+                <div class="flex gap-3"><button onclick="hideProductForm()" class="btn-outline flex-1">Batal</button><button onclick="saveProduct()" class="btn-accent flex-1"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus -->
+    <div id="deleteConfirmModal" class="modal-overlay" style="display: none;" onclick="if(event.target===this)closeDeleteConfirm()">
+        <div class="modal-content" style="max-width:380px;" onclick="event.stopPropagation()">
+            <div class="text-center py-4">
+                <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: var(--danger-glow);"><i class="fa-solid fa-trash-can text-2xl" style="color: var(--danger);"></i></div>
+                <h3 class="text-base font-bold mb-2">Hapus Produk?</h3>
+                <p class="text-sm mb-1" style="color: var(--fg-muted);" id="deleteProductName"></p>
+                <p class="text-xs" style="color: var(--danger);">Tindakan ini tidak dapat dibatalkan.</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteConfirm()" class="btn-outline flex-1">Batal</button>
+                <button onclick="confirmDelete()" class="flex-1" style="background:var(--danger);color:#fff;border:none;border-radius:10px;padding:12px;cursor:pointer;font-family:inherit;font-weight:600;font-size:0.9rem;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'"><i class="fa-solid fa-trash-can mr-1"></i> Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+</body>
+</html>

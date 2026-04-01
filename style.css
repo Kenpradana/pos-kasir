@@ -274,3 +274,183 @@ body {
     .receipt, .receipt * { visibility: visible; }
     .receipt { position: absolute; left: 0; top: 0; }
 }
+
+/* ============================================================
+   RESPONSIVE — LAPTOP & PC
+   ============================================================ */
+
+/* Laptop Kecil 11-13" (1024px - 1279px) */
+@media (max-width: 1279px) {
+    .header { padding: 10px 16px; }
+    .header-title { font-size: 0.9rem; }
+    .header-subtitle { display: none; }
+    .header-logo { width: 32px; height: 32px; font-size: 0.85rem; }
+    .header-info-box { padding: 6px 10px; font-size: 0.7rem; }
+    .btn-outline { padding: 7px 12px; font-size: 0.78rem; }
+
+    .panel-left { width: 58%; }
+    .panel-right { width: 42%; }
+
+    .filter-section { padding: 12px 14px 10px; gap: 10px; }
+    .product-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .product-card { padding: 10px; }
+    .product-card .text-lg { font-size: 1.4rem; }
+    .cat-tab { padding: 6px 14px; font-size: 0.75rem; }
+
+    .order-header { padding: 12px 14px 10px; }
+    .cart-scroll { padding: 8px 10px; }
+    .cart-item { padding: 8px; gap: 8px; }
+    .cart-item .w-9 { width: 32px; height: 32px; font-size: 1rem; }
+    .qty-btn { width: 26px; height: 26px; }
+    .cart-item-remove { width: 26px; height: 26px; }
+
+    .summary-section { padding: 12px 14px; }
+    .input-discount { width: 80px; font-size: 0.75rem; }
+    .summary-rows { gap: 6px; margin-bottom: 12px; }
+    .summary-row { font-size: 0.7rem; }
+    .total-price { font-size: 1.1rem; }
+    .btn-pay { padding: 12px; font-size: 0.9rem; }
+
+    .table-num { width: 34px; height: 34px; font-size: 0.78rem; }
+
+    .modal-content { padding: 20px; }
+    .modal-crud { max-width: 720px; }
+    .crud-toolbar { gap: 8px; }
+    .crud-cat-select { width: 130px; font-size: 0.75rem; }
+    .crud-table { font-size: 0.75rem; }
+    .crud-table thead th { padding: 8px 10px; font-size: 0.65rem; }
+    .crud-table td { padding: 8px 10px; }
+    .crud-table .emoji-cell { font-size: 1.1rem; }
+    .crud-table .name-cell { max-width: 140px; }
+    .crud-action-btn { width: 28px; height: 28px; }
+
+    .pay-total-amount { font-size: 1.5rem; }
+    .pay-methods-grid { gap: 8px; }
+    .pay-method { padding: 12px; }
+    .pay-method i { font-size: 1.3rem; }
+    .pay-methods-4col { grid-template-columns: repeat(2, 1fr); }
+    .input-cash { font-size: 1rem; padding: 12px; }
+    .quick-cash-grid { gap: 6px; }
+
+    .receipt { font-size: 0.68rem; padding: 18px 16px; max-width: 280px; }
+    .login-card { padding: 32px 24px; }
+}
+
+/* Laptop Sedang 13-14" (1280px - 1439px) */
+@media (min-width: 1280px) and (max-width: 1439px) {
+    .product-grid { grid-template-columns: repeat(3, 1fr); }
+    .modal-crud { max-width: 780px; }
+}
+
+/* Monitor 15-24" (1440px - 1919px) */
+@media (min-width: 1440px) {
+    .header { padding: 12px 32px; }
+    .filter-section { padding: 18px 24px 14px; }
+    .product-scroll { padding: 0 24px 24px; }
+    .product-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .product-card { padding: 14px; }
+    .product-card .text-lg { font-size: 2rem; }
+    .order-header { padding: 18px 22px 14px; }
+    .cart-scroll { padding: 14px 18px; }
+    .summary-section { padding: 18px 22px; }
+    .total-price { font-size: 1.35rem; }
+    .modal-crud { max-width: 860px; }
+    .crud-table .name-cell { max-width: 240px; }
+}
+
+/* Monitor Besar 27"+ (1920px ke atas) */
+@media (min-width: 1920px) {
+    .header { padding: 14px 48px; }
+    .product-scroll { padding: 0 32px 28px; }
+    .product-grid { grid-template-columns: repeat(5, 1fr); gap: 16px; }
+    .product-card { padding: 16px; border-radius: 14px; }
+    .product-card .text-lg { font-size: 2.2rem; }
+    .product-card .text-xs { font-size: 0.85rem; }
+    .product-card .font-mono { font-size: 0.95rem; }
+    .panel-left { width: 65%; }
+    .panel-right { width: 35%; }
+    .order-header { padding: 20px 28px 16px; }
+    .cart-scroll { padding: 16px 22px; }
+    .cart-item { padding: 12px 14px; }
+    .cart-item .w-9 { width: 42px; height: 42px; font-size: 1.4rem; }
+    .summary-section { padding: 20px 28px; }
+    .total-price { font-size: 1.5rem; }
+    .modal-crud { max-width: 960px; }
+    .crud-table .name-cell { max-width: 300px; font-size: 0.88rem; }
+}
+
+/* Laptop Mini / Tablet Landscape (< 1024px) */
+@media (max-width: 1023px) {
+    .header { flex-wrap: wrap; gap: 8px; }
+    .header-info-box:nth-child(3),
+    .header-info-box:nth-child(4) { display: none; }
+
+    .panel-left { width: 55%; }
+    .panel-right { width: 45%; }
+
+    .product-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .product-card { padding: 8px; border-radius: 10px; }
+    .product-card::before { height: 2px; }
+    .product-card .text-lg { font-size: 1.3rem; }
+    .product-card .text-xs { font-size: 0.65rem; }
+    .product-card .font-mono { font-size: 0.72rem; }
+    .stock-badge { font-size: 0.6rem; padding: 1px 5px; }
+    .cat-tab { padding: 5px 12px; font-size: 0.7rem; border-radius: 16px; }
+
+    .cart-item { padding: 6px; gap: 6px; }
+    .cart-item .w-9 { width: 28px; height: 28px; font-size: 0.85rem; border-radius: 6px; }
+    .qty-btn { width: 24px; height: 24px; border-radius: 6px; }
+    .cart-item-remove { width: 24px; height: 24px; }
+
+    .summary-section { padding: 10px 12px; }
+    .input-discount { width: 70px; padding: 5px 8px; font-size: 0.7rem; }
+    .summary-rows { gap: 4px; margin-bottom: 10px; }
+    .summary-row { font-size: 0.65rem; }
+    .summary-divider { margin: 2px 0; }
+    .total-price { font-size: 1rem; }
+    .btn-pay { padding: 10px; font-size: 0.85rem; }
+    .table-num { width: 30px; height: 30px; font-size: 0.7rem; border-radius: 6px; }
+    .btn-danger-sm { font-size: 0.68rem; padding: 4px 8px; }
+
+    .modal-content { padding: 16px; border-radius: 12px; max-height: 95vh; }
+    .modal-header { margin-bottom: 14px; }
+    .modal-crud, .modal-form, .modal-receipt, .modal-history { max-width: 95vw; }
+
+    .crud-toolbar { flex-wrap: wrap; gap: 6px; }
+    .crud-cat-select { width: 110px; }
+    .crud-toolbar .btn-accent { font-size: 0.75rem; padding: 6px 12px; }
+    .crud-table-wrap { border-radius: 8px; }
+    .crud-table { font-size: 0.7rem; }
+    .crud-table thead th { padding: 6px 8px; font-size: 0.6rem; }
+    .crud-table td { padding: 6px 8px; }
+    .crud-table .emoji-cell { font-size: 1rem; }
+    .crud-table .name-cell { max-width: 100px; font-size: 0.65rem; }
+    .crud-table .price-cell { font-size: 0.65rem; }
+    .crud-table .stock-cell { font-size: 0.65rem; }
+    .crud-action-btn { width: 24px; height: 24px; font-size: 0.6rem; }
+
+    .pay-total-box { padding: 12px 16px; }
+    .pay-total-amount { font-size: 1.3rem; }
+    .pay-methods-grid { gap: 6px; }
+    .pay-method { padding: 10px 8px; }
+    .pay-method i { font-size: 1.1rem; }
+    .pay-method .text-xs { font-size: 0.65rem; }
+    .pay-methods-4col { grid-template-columns: repeat(2, 1fr); }
+    .input-cash { font-size: 0.9rem; padding: 10px; }
+    .quick-cash-grid { gap: 4px; }
+    .quick-cash-grid .btn-outline { font-size: 0.65rem; padding: 6px; }
+    .change-box { padding: 12px; }
+    .change-box .text-xl { font-size: 1rem; }
+
+    .crud-form-body .mb-4 { margin-bottom: 12px; }
+    .selected-emoji-display { width: 44px; height: 44px; font-size: 1.5rem; }
+    .emoji-grid { grid-template-columns: repeat(8, 1fr); }
+    .emoji-option { width: 30px; height: 30px; font-size: 1rem; }
+    .form-cat-btn, .form-cat-custom-btn { padding: 5px 10px; font-size: 0.7rem; }
+
+    .login-card { padding: 24px 20px; }
+    .login-logo { width: 48px; height: 48px; font-size: 1.2rem; }
+    .receipt { font-size: 0.62rem; padding: 14px 12px; max-width: 260px; }
+
+    .toast { padding: 10px 16px; font-size: 0.8rem; }
+}

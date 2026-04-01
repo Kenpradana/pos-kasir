@@ -663,6 +663,10 @@ function renderProductTable() {
 // ============================================================
 // FORM TAMBAH / EDIT
 // ============================================================
+function editProduct(id) {
+    showProductForm(id);
+}
+
 function showProductForm(pid) {
     editingProductId = pid || null;
     document.getElementById('emojiGrid').innerHTML = EMOJI_OPTIONS.map(function (e) { return '<button type="button" class="emoji-option" onclick="pickEmoji(\'' + e + '\')">' + e + '</button>'; }).join('');
